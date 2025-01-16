@@ -63,3 +63,32 @@ DB_USER=root
 DB_PASSWORD=password
 DB_DATABASE=chat_api
 ```
+
+### Testing
+
+The application uses AdonisJS's testing framework with a separate test database. Follow these steps to run the tests:
+
+1. Create the test database (if not already created):
+```bash
+docker exec mysql-server mysql -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS chat_api_test;"
+```
+
+2. Configure the test environment:
+   - Copy `.env.example` to `.env.testing`
+   - Update database name to `chat_api_test`
+   - Adjust other values as needed
+
+3. Run the tests:
+```bash
+node ace test
+```
+
+The test suite includes:
+- User registration tests
+- Authentication tests
+- Protected route access tests
+
+Each test run will:
+- Automatically migrate the test database
+- Run all tests
+- Reset the database after completion
