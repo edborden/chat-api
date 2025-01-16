@@ -13,6 +13,21 @@ const testUser = {
   last_name: 'Doe'
 }
 
+const testUsers = [
+  {
+    email: 'ppeck@giftogram.com',
+    password: 'Test123',
+    first_name: 'Preston',
+    last_name: 'Peck'
+  },
+  {
+    email: 'jgreen@giftogram.com',
+    password: 'Test123',
+    first_name: 'Jake',
+    last_name: 'Green'
+  }
+]
+
 test('can register a new user', async ({ client, assert }) => {
   const response = await client
     .post('/api/v1/register')
