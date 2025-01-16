@@ -41,19 +41,11 @@ class AuthController {
     try {
       const { email, password } = request.only(['email', 'password'])
       
-      // Generate token and get user
       const token = await auth.attempt(email, password)
-      const user = await User.findBy('email', email)
-      const userData = user.toJSON()
       
       return response.json({
-        data: {
-          user_id: userData.id,
-          email: userData.email,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          token: token.token
-        }
+        status: 'success',
+        data: token
       })
     } catch (error) {
       return response.status(400).json({
