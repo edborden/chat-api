@@ -1,30 +1,29 @@
 'use strict'
 
-const { test, trait, assert } = use('Test/Suite')('Auth')
+const { test, trait, assert } = use('Test/Suite')('Auth V1')
 const User = use('App/Models/User')
 
 trait('Test/ApiClient')
 trait('DatabaseTransactions')
 
 const testUser = {
-  email: 'test@example.com',
-  password: 'password123',
-  username: 'testuser'
+  email: 'info@giftogram.com',
+  password: 'Test123',
+  first_name: 'John',
+  last_name: 'Doe'
 }
 
-test('can register a new user', async ({ client }) => {
+test('can register a new user', async ({ client, assert }) => {
   const response = await client
     .post('/api/v1/register')
     .send(testUser)
     .end()
 
   response.assertStatus(201)
-  response.assertJSONSubset({
-    data: {
-      email: testUser.email,
-      username: testUser.username
-    }
-  })
+  assert.exists(response.body.data.user_id)
+  assert.equal(response.body.data.email, testUser.email)
+  assert.equal(response.body.data.first_name, testUser.first_name)
+  assert.equal(response.body.data.last_name, testUser.last_name)
 })
 
 test('cannot register with existing email', async ({ client }) => {
@@ -55,7 +54,6 @@ test('can login with correct credentials', async ({ client, assert }) => {
   response.assertJSONSubset({
     status: 'success'
   })
-  // Ensure we got a token
   assert.isString(response.body.data.token)
 })
 
@@ -76,7 +74,7 @@ test('cannot login with incorrect credentials', async ({ client }) => {
   })
 })
 
-test('can get profile with valid token', async ({ client }) => {
+test('can get profile with valid token', async ({ client, assert }) => {
   const user = await User.create(testUser)
   const loginResponse = await client
     .post('/api/v1/login')
@@ -94,13 +92,10 @@ test('can get profile with valid token', async ({ client }) => {
     .end()
 
   response.assertStatus(200)
-  response.assertJSONSubset({
-    status: 'success',
-    data: {
-      email: testUser.email,
-      username: testUser.username
-    }
-  })
+  assert.exists(response.body.data.user_id)
+  assert.equal(response.body.data.email, testUser.email)
+  assert.equal(response.body.data.first_name, testUser.first_name)
+  assert.equal(response.body.data.last_name, testUser.last_name)
 })
 
 test('cannot get profile without token', async ({ client }) => {

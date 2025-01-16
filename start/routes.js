@@ -20,9 +20,6 @@ Route.get('/', () => {
   return { greeting: 'Hello world in JSON' }
 })
 
-// Auth routes
-Route.group(() => {
-  Route.post('register', 'AuthController.register')
-  Route.post('login', 'AuthController.login')
-  Route.get('profile', 'AuthController.profile').middleware('auth')
-}).prefix('api/v1')
+// Import versioned routes
+require('./routes/v1')
+require('./routes/v2')
