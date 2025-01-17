@@ -12,10 +12,8 @@ class AddMessagesIndexesSchema extends Schema {
   }
 
   down () {
-    this.table('messages', (table) => {
-      // Remove only the composite index since the foreign key indexes are managed by MySQL
-      table.dropIndex(['sender_user_id', 'receiver_user_id', 'created_at'], 'idx_messages_users_time')
-    })
+    // Skip dropping the index since it's used by foreign key constraints
+    return Promise.resolve()
   }
 }
 

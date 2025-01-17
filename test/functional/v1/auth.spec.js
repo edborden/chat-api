@@ -1,13 +1,24 @@
 'use strict'
 
-const { test, trait, assert } = use('Test/Suite')('Auth V1')
+const { test, trait, before, after } = use('Test/Suite')('Auth V1')
 const User = use('App/Models/User')
+const Database = use('Database')
 
 trait('Test/ApiClient')
 trait('DatabaseTransactions')
 
+before(async () => {
+  // Clear users table before each test suite
+  await Database.table('users').delete()
+})
+
+after(async () => {
+  // Clear users table after each test suite
+  await Database.table('users').delete()
+})
+
 const testUser = {
-  email: 'info@giftogram.com',
+  email: 'test@example.com',
   password: 'Test123',
   first_name: 'John',
   last_name: 'Doe'
@@ -15,13 +26,13 @@ const testUser = {
 
 const testUsers = [
   {
-    email: 'ppeck@giftogram.com',
+    email: 'ppeck@example.com',
     password: 'Test123',
     first_name: 'Preston',
     last_name: 'Peck'
   },
   {
-    email: 'jgreen@giftogram.com',
+    email: 'jgreen@example.com',
     password: 'Test123',
     first_name: 'Jake',
     last_name: 'Green'
@@ -29,29 +40,40 @@ const testUsers = [
 ]
 
 test('can register a new user', async ({ client, assert }) => {
+  // Clear any existing users
+  await Database.table('users').delete()
+
   const response = await client
     .post('/api/v1/register')
     .send(testUser)
     .end()
 
-  response.assertStatus(201)
-  assert.exists(response.body.data.user_id)
-  assert.equal(response.body.data.email, testUser.email)
-  assert.equal(response.body.data.first_name, testUser.first_name)
-  assert.equal(response.body.data.last_name, testUser.last_name)
+  response.assertStatus(200)
+  assert.equal(response.body.success_code, '200')
+  assert.equal(response.body.success_title, 'Registration Successful')
+  assert.equal(response.body.success_message, 'User registered successfully')
 })
 
-test('cannot register with existing email', async ({ client }) => {
-  // First create a user
-  await User.create(testUser)
+test('cannot register with existing email', async ({ client, assert }) => {
+  // Clear any existing users
+  await Database.table('users').delete()
 
-  // Try to create another user with same email
+  // First registration
+  await client
+    .post('/api/v1/register')
+    .send(testUser)
+    .end()
+
+  // Second registration with same email
   const response = await client
     .post('/api/v1/register')
     .send(testUser)
     .end()
 
   response.assertStatus(400)
+  assert.equal(response.body.error_code, '400')
+  assert.equal(response.body.error_title, 'Registration Failed')
+  assert.equal(response.body.error_message, 'Email already exists')
 })
 
 test('can login with correct credentials', async ({ client, assert }) => {
@@ -66,15 +88,10 @@ test('can login with correct credentials', async ({ client, assert }) => {
     .end()
 
   response.assertStatus(200)
-  assert.exists(response.body.data.user_id)
-  assert.equal(response.body.data.email, testUser.email)
-  assert.equal(response.body.data.first_name, testUser.first_name)
-  assert.equal(response.body.data.last_name, testUser.last_name)
-  assert.exists(response.body.data.token)
-  assert.isString(response.body.data.token)
+  assert.exists(response.body.token)
 })
 
-test('cannot login with incorrect credentials', async ({ client }) => {
+test('cannot login with incorrect credentials', async ({ client, assert }) => {
   await User.create(testUser)
 
   const response = await client
@@ -85,14 +102,15 @@ test('cannot login with incorrect credentials', async ({ client }) => {
     })
     .end()
 
-  response.assertStatus(400)
-  response.assertJSONSubset({
-    status: 'error'
-  })
+  response.assertStatus(401)
+  assert.equal(response.body.error_code, '401')
+  assert.equal(response.body.error_title, 'Login Failed')
+  assert.equal(response.body.error_message, 'Invalid credentials')
 })
 
 test('can get profile with valid token', async ({ client, assert }) => {
-  const user = await User.create(testUser)
+  await User.create(testUser)
+
   const loginResponse = await client
     .post('/api/v1/login')
     .send({
@@ -101,7 +119,7 @@ test('can get profile with valid token', async ({ client, assert }) => {
     })
     .end()
 
-  const token = loginResponse.body.data.token
+  const token = loginResponse.body.token
 
   const response = await client
     .get('/api/v1/profile')
@@ -109,13 +127,12 @@ test('can get profile with valid token', async ({ client, assert }) => {
     .end()
 
   response.assertStatus(200)
-  assert.exists(response.body.data.user_id)
-  assert.equal(response.body.data.email, testUser.email)
-  assert.equal(response.body.data.first_name, testUser.first_name)
-  assert.equal(response.body.data.last_name, testUser.last_name)
+  assert.equal(response.body.email, testUser.email)
+  assert.equal(response.body.first_name, testUser.first_name)
+  assert.equal(response.body.last_name, testUser.last_name)
 })
 
-test('cannot get profile without token', async ({ client }) => {
+test('cannot get profile without token', async ({ client, assert }) => {
   const response = await client
     .get('/api/v1/profile')
     .end()

@@ -12,6 +12,16 @@ class AuthController {
         'last_name'
       ])
 
+      // Check if user already exists
+      const existingUser = await User.findBy('email', email)
+      if (existingUser) {
+        return response.status(400).json({
+          error_code: '400',
+          error_title: 'Registration Failed',
+          error_message: 'Email already exists'
+        })
+      }
+
       const user = await User.create({
         email,
         password,
@@ -19,20 +29,17 @@ class AuthController {
         last_name
       })
 
-      // For the registration response specifically
-      const userData = user.toJSON()
-      return response.status(201).json({
-        data: {
-          user_id: userData.id,
-          email: userData.email,
-          first_name: userData.first_name,
-          last_name: userData.last_name
-        }
+      return response.status(200).json({
+        success_code: '200',
+        success_title: 'Registration Successful',
+        success_message: 'User registered successfully'
       })
     } catch (error) {
+      console.error('Registration error:', error)
       return response.status(400).json({
-        status: 'error',
-        message: 'There was a problem creating the user, please try again later.'
+        error_code: '400',
+        error_title: 'Registration Failed',
+        error_message: 'There was a problem creating the user, please try again later.'
       })
     }
   }
@@ -41,16 +48,17 @@ class AuthController {
     try {
       const { email, password } = request.only(['email', 'password'])
       
+      // Generate token
       const token = await auth.attempt(email, password)
       
       return response.json({
-        status: 'success',
-        data: token
+        token: token.token
       })
     } catch (error) {
-      return response.status(400).json({
-        status: 'error',
-        message: 'Invalid credentials'
+      return response.status(401).json({
+        error_code: '401',
+        error_title: 'Login Failed',
+        error_message: 'Invalid credentials'
       })
     }
   }
@@ -60,18 +68,15 @@ class AuthController {
       const user = await auth.getUser()
       const userData = user.toJSON()
       return response.json({
-        status: 'success',
-        data: {
-          user_id: userData.id,
-          email: userData.email,
-          first_name: userData.first_name,
-          last_name: userData.last_name
-        }
+        email: userData.email,
+        first_name: userData.first_name,
+        last_name: userData.last_name
       })
     } catch (error) {
       return response.status(401).json({
-        status: 'error',
-        message: 'You are not authorized!'
+        error_code: '401',
+        error_title: 'Authorization Failed',
+        error_message: 'You are not authorized!'
       })
     }
   }

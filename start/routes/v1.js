@@ -9,9 +9,9 @@ Route.group(() => {
   Route.get('/profile', 'V1/AuthController.profile').middleware(['auth'])
 
   // Message routes
-  Route.get('/view_messages', 'V1/MessagesController.viewMessages')
-  Route.post('/send_message', 'V1/MessagesController.sendMessage')
+  Route.get('/view_messages', 'V1/MessagesController.view_messages')
+  Route.post('/send_message', 'V1/MessagesController.send_message')
   
   // User routes
-  Route.get('/list_all_users', 'V1/UsersController.listAll')
+  Route.get('/list_all_users', 'V1/UsersController.list_all_users')
 }).prefix('api/v1')

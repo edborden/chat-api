@@ -1,56 +1,69 @@
 'use strict'
 
-const { test, trait, assert } = use('Test/Suite')('Users V1')
+const { test, trait, before, after } = use('Test/Suite')('Users V1')
 const User = use('App/Models/User')
+const Database = use('Database')
 
 trait('Test/ApiClient')
 trait('DatabaseTransactions')
 
-const testUser = {
-  email: 'info@giftogram.com',
-  password: 'Test123',
-  first_name: 'John',
-  last_name: 'Doe'
-}
+before(async () => {
+  // Clear users table before each test suite
+  await Database.table('users').delete()
+})
 
-const testUsers = [
-  {
-    email: 'ppeck@giftogram.com',
-    password: 'Test123',
-    first_name: 'Preston',
-    last_name: 'Peck'
-  },
-  {
-    email: 'jgreen@giftogram.com',
-    password: 'Test123',
-    first_name: 'Jake',
-    last_name: 'Green'
-  }
-]
+after(async () => {
+  // Clear users table after each test suite
+  await Database.table('users').delete()
+})
 
 test('can list all users except requester', async ({ client, assert }) => {
-  // Create multiple users
-  const users = await Promise.all(testUsers.map(user => User.create(user)))
-  const requester = await User.create(testUser)
+  // Clear any existing users
+  await Database.table('users').delete()
+
+  // Create test users
+  const user1 = await User.create({
+    email: 'user1@example.com',
+    password: 'password123',
+    first_name: 'First1',
+    last_name: 'Last1'
+  })
+
+  const user2 = await User.create({
+    email: 'user2@example.com',
+    password: 'password123',
+    first_name: 'First2',
+    last_name: 'Last2'
+  })
+
+  const requester = await User.create({
+    email: 'requester@example.com',
+    password: 'password123',
+    first_name: 'Requester',
+    last_name: 'User'
+  })
 
   const response = await client
     .get('/api/v1/list_all_users')
-    .query({ requester_user_id: requester.id })
+    .query({
+      requester_user_id: requester.id
+    })
     .end()
 
   response.assertStatus(200)
-  assert.isArray(response.body.users)
-  assert.lengthOf(response.body.users, 2)
-  
-  // Verify user structure and data
-  response.body.users.forEach((user, index) => {
-    assert.equal(user.email, testUsers[index].email)
-    assert.equal(user.first_name, testUsers[index].first_name)
-    assert.equal(user.last_name, testUsers[index].last_name)
-    assert.exists(user.user_id)
-  })
-
-  // Verify requester is not in the list
-  const requesterInList = response.body.users.some(user => user.email === testUser.email)
-  assert.isFalse(requesterInList)
+  assert.equal(response.body.users.length, 2)
+  assert.deepEqual(response.body.users, [
+    {
+      user_id: user1.id,
+      email: user1.email,
+      first_name: user1.first_name,
+      last_name: user1.last_name
+    },
+    {
+      user_id: user2.id,
+      email: user2.email,
+      first_name: user2.first_name,
+      last_name: user2.last_name
+    }
+  ])
 })

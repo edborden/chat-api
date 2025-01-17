@@ -3,7 +3,7 @@
 const User = use('App/Models/User')
 
 class UsersController {
-  async listAll({ request, response }) {
+  async list_all_users({ request, response }) {
     const { requester_user_id } = request.get()
 
     // Verify requester exists
@@ -11,8 +11,8 @@ class UsersController {
     if (!requester) {
       return response.status(404).json({
         error_code: '404',
-        error_title: 'User Not Found',
-        error_message: 'Requester user does not exist'
+        error_title: 'User(s) Not Found',
+        error_message: `Could not find user(s): ${requester_user_id}`
       })
     }
 

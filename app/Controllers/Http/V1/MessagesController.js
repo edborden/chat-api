@@ -5,7 +5,7 @@ const User = use('App/Models/User')
 const Database = use('Database')
 
 class MessagesController {
-  async sendMessage({ request, response }) {
+  async send_message({ request, response }) {
     const { sender_user_id, receiver_user_id, message } = request.all()
 
     const { users: [sender, receiver], errorResponse } = await this._checkUsersExist([
@@ -31,7 +31,7 @@ class MessagesController {
     })
   }
 
-  async viewMessages({ request, response }) {
+  async view_messages({ request, response }) {
     const { user_id_a, user_id_b } = request.get()
 
     const { users: [userA, userB], errorResponse } = await this._checkUsersExist([
