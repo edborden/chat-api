@@ -1,4 +1,5 @@
-This document serves as a user guide for the Chat API. See [Development Log](DEVLOG.md) for notes related to the assessment prompt and the development process.
+FullStack assesssment response by Ed Borden
+This document serves as a development guide for the app. See [Development Log](DEVLOG.md) for notes related to the assessment prompt and the development process.
 
 # Chat API
 

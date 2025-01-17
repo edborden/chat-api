@@ -34,3 +34,6 @@
 
 ## Database Schema
 The database schema can be found in [database/schema.sql](database/schema.sql). This file contains the complete structure of all tables, including indexes and foreign key relationships.
+
+## Time estimate
+~4 hours to complete. I chose a framework I've never used before, as I wanted to get some fun experience while completing the task. Additionally, I waffled a bit on how to balance what I perceived to be a specific request with obvious holes in the spec and building something that made sense, hence the v1/v2 scenario.
