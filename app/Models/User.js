@@ -4,7 +4,7 @@ const Model = use('Model')
 const Hash = use('Hash')
 
 class User extends Model {
-  static boot () {
+  static boot() {
     super.boot()
 
     this.addHook('beforeSave', async (userInstance) => {
@@ -15,10 +15,9 @@ class User extends Model {
   }
 
   // Hide sensitive fields by default
-  static get hidden () {
+  static get hidden() {
     return ['password']
   }
-
 }
 
 module.exports = User

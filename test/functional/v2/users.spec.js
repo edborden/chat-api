@@ -1,35 +1,11 @@
 'use strict'
 
-const { test, trait, beforeEach, afterEach } = use('Test/Suite')('Users V2')
+const { test, trait } = use('Test/Suite')('Users V2')
 const User = use('App/Models/User')
-const Database = use('Database')
 
 trait('Test/ApiClient')
 trait('Auth/Client')
 trait('DatabaseTransactions')
-
-beforeEach(async () => {
-  // Clear users table before each test
-  await Database.table('users').delete()
-})
-
-afterEach(async () => {
-  // Clear users table after each test
-  await Database.table('users').delete()
-})
-
-const createTestUsers = async (count) => {
-  const users = []
-  for (let i = 0; i < count; i++) {
-    users.push({
-      email: `test${i}@example.com`,
-      password: 'password123',
-      first_name: `First${i}`,
-      last_name: `Last${i}`
-    })
-  }
-  return Database.table('users').insert(users)
-}
 
 test('users index returns paginated results', async ({ client, assert }) => {
   // Create test users
@@ -44,7 +20,7 @@ test('users index returns paginated results', async ({ client, assert }) => {
   const users = Array.from({ length: 5 }, (_, i) => ({
     email: `user${i + 1}@example.com`,
     password: 'password123',
-    first_name: `User`,
+    first_name: 'User',
     last_name: `${i + 1}`
   }))
 
@@ -170,7 +146,6 @@ test('users index returns users sorted by creation time', async ({ client, asser
     ...users[0],
     created_at: new Date(now.getTime() - 1000) // 1 second ago
   })
-  
   const user2 = await User.create({
     ...users[1],
     created_at: new Date(now.getTime()) // now
@@ -184,7 +159,6 @@ test('users index returns users sorted by creation time', async ({ client, asser
 
   response.assertStatus(200)
   assert.equal(response.body.users.length, 2)
-  
   // Verify the order is newest first
   assert.equal(response.body.users[0].user_id, user2.id)
   assert.equal(response.body.users[1].user_id, user1.id)

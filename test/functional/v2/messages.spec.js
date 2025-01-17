@@ -235,13 +235,17 @@ test('messages index enforces max limit of 50', async ({ client, assert }) => {
 })
 
 test('cannot access messages without authentication', async ({ client, assert }) => {
-  const userA = await User.create(testUsers[0])
-  const userB = await User.create(testUsers[1])
+  const otherUser = await User.create({
+    email: 'other@example.com',
+    password: 'test123',
+    first_name: 'Other',
+    last_name: 'User'
+  })
 
   const response = await client
     .get('/api/v2/messages')
     .query({
-      other_user_id: userB.id,
+      other_user_id: otherUser.id,
       page: 1,
       limit: 10
     })

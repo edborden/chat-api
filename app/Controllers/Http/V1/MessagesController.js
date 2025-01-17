@@ -1,20 +1,24 @@
 'use strict'
 
-const Message = use('App/Models/Message')
 const User = use('App/Models/User')
-const Database = use('Database')
+const Message = use('App/Models/Message')
 
 class MessagesController {
-  async send_message({ request, response }) {
+  async create({ request, response }) {
     const { sender_user_id, receiver_user_id, message } = request.all()
 
-    const { users: [sender, receiver], errorResponse } = await this._checkUsersExist([
-      sender_user_id,
-      receiver_user_id
-    ])
+    // Verify users exist
+    const users = await User.query()
+      .whereIn('id', [sender_user_id, receiver_user_id])
+      .fetch()
 
-    if (errorResponse) {
-      return response.status(404).json(errorResponse)
+    if (users.rows.length !== 2) {
+      return response.status(404).json({
+        error_code: '404',
+        error_title: 'User(s) Not Found',
+        error_message: `Could not find user(s): ${[sender_user_id, receiver_user_id].filter(id =>
+          !users.rows.find(user => user.id === id)).join(',')}`
+      })
     }
 
     // Create message
@@ -31,57 +35,40 @@ class MessagesController {
     })
   }
 
-  async view_messages({ request, response }) {
+  async index({ request, response }) {
     const { user_id_a, user_id_b } = request.get()
 
-    const { users: [userA, userB], errorResponse } = await this._checkUsersExist([
-      user_id_a,
-      user_id_b
-    ])
+    // Verify users exist
+    const users = await User.query()
+      .whereIn('id', [user_id_a, user_id_b])
+      .fetch()
 
-    if (errorResponse) {
-      return response.status(404).json(errorResponse)
+    if (users.rows.length !== 2) {
+      return response.status(404).json({
+        error_code: '404',
+        error_title: 'User(s) Not Found',
+        error_message: `Could not find user(s): ${[user_id_a, user_id_b].filter(id =>
+          !users.rows.find(user => user.id === id)).join(',')}`
+      })
     }
 
-    // Get messages between these users in chronological order
-    const messages = await Message
-      .query()
+    // Get messages between users
+    const messages = await Message.query()
       .where(function () {
         this.where(function () {
           this.where('sender_user_id', user_id_a)
-          this.where('receiver_user_id', user_id_b)
-        })
-        .orWhere(function () {
+            .where('receiver_user_id', user_id_b)
+        }).orWhere(function () {
           this.where('sender_user_id', user_id_b)
-          this.where('receiver_user_id', user_id_a)
+            .where('receiver_user_id', user_id_a)
         })
       })
       .orderBy('created_at', 'asc')
       .fetch()
 
-    return response.status(200).json({
+    return response.json({
       messages: messages.toJSON()
     })
-  }
-
-  /**
-   * Check if users exist and return error response if they don't
-   * @param {number[]} userIds - Array of user IDs to check
-   * @returns {Promise<{users: Object[], errorResponse: Object|null}>}
-   */
-  async _checkUsersExist(userIds) {
-    const users = await Promise.all(
-      userIds.map(id => User.find(id))
-    )
-
-    const missingIds = userIds.filter((_, index) => !users[index])
-    const errorResponse = missingIds.length > 0 ? {
-      error_code: '404',
-      error_title: 'User(s) Not Found',
-      error_message: `Could not find user(s): ${missingIds.join(', ')}`
-    } : null
-
-    return { users, errorResponse }
   }
 }
 
