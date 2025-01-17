@@ -12,6 +12,15 @@ class AuthController {
         'last_name'
       ])
 
+      // Check if user already exists
+      const existingUser = await User.findBy('email', email)
+      if (existingUser) {
+        return response.status(400).json({
+          status: 'error',
+          message: 'Email already registered'
+        })
+      }
+
       const user = await User.create({
         email,
         password,
@@ -30,6 +39,7 @@ class AuthController {
         }
       })
     } catch (error) {
+      console.error('Registration error:', error)
       return response.status(400).json({
         status: 'error',
         message: 'There was a problem creating the user, please try again later.'

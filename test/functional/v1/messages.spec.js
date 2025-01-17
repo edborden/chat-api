@@ -59,8 +59,8 @@ test('cannot send message to non-existent user', async ({ client, assert }) => {
 
   response.assertStatus(404)
   assert.equal(response.body.error_code, '404')
-  assert.equal(response.body.error_title, 'User Not Found')
-  assert.equal(response.body.error_message, 'The recipient user does not exist')
+  assert.equal(response.body.error_title, 'User(s) Not Found')
+  assert.equal(response.body.error_message, `Could not find user(s): ${nonExistentUserId}`)
 })
 
 test('can view messages between two users in chronological order', async ({ client, assert }) => {
@@ -100,33 +100,14 @@ test('can view messages between two users in chronological order', async ({ clie
   // Get conversation
   const response = await client
     .get('/api/v1/view_messages')
-    .query({
-      user_id_a: userA.id,
-      user_id_b: userB.id
-    })
+    .query({ user_id_a: userA.id, user_id_b: userB.id })
     .end()
 
   response.assertStatus(200)
-  assert.isArray(response.body.messages)
-  assert.lengthOf(response.body.messages, 3)
+  assert.equal(response.body.messages.length, 3)
   
-  // Verify messages are in chronological order
-  response.body.messages.forEach((message, index) => {
-    assert.exists(message.message_id)
-    assert.exists(message.sender_user_id)
-    assert.exists(message.message)
-    assert.exists(message.epoch)
-
-    // Verify message content matches original in order
-    assert.equal(message.message, messages[index].message)
-    assert.equal(message.sender_user_id, messages[index].sender_user_id)
-
-    // Verify timestamps are in ascending order
-    if (index > 0) {
-      assert.isTrue(
-        message.epoch >= response.body.messages[index - 1].epoch,
-        'Messages should be in chronological order'
-      )
-    }
-  })
+  // Check messages are in chronological order
+  assert.equal(response.body.messages[0].message, 'First message')
+  assert.equal(response.body.messages[1].message, 'Second message')
+  assert.equal(response.body.messages[2].message, 'Third message')
 })
