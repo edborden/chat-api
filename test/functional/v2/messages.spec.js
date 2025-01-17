@@ -1,24 +1,12 @@
 'use strict'
 
-const { test, trait, beforeEach, afterEach } = use('Test/Suite')('Messages V2')
+const { test, trait } = use('Test/Suite')('Messages V2')
 const User = use('App/Models/User')
 const Database = use('Database')
 
 trait('Test/ApiClient')
 trait('Auth/Client')
 trait('DatabaseTransactions')
-
-beforeEach(async () => {
-  // Clear users and messages tables before each test
-  await Database.table('messages').delete()
-  await Database.table('users').delete()
-})
-
-afterEach(async () => {
-  // Clear users and messages tables after each test
-  await Database.table('messages').delete()
-  await Database.table('users').delete()
-})
 
 const testUsers = [
   {
@@ -35,16 +23,24 @@ const testUsers = [
   }
 ]
 
+const createTestMessage = async (client, sender, receiver, message) => {
+  return client
+    .post('/api/v2/message')
+    .loginVia(sender)
+    .send({
+      receiver_user_id: receiver.id,
+      message
+    })
+    .end()
+}
+
 test('can send message between users', async ({ client, assert }) => {
-  const sender = await User.create(testUsers[0])
-  const receiver = await User.create(testUsers[1])
+  const [sender, receiver] = await Promise.all([
+    User.create(testUsers[0]),
+    User.create(testUsers[1])
+  ])
 
-  const messageData = {
-    receiver_user_id: receiver.id,
-    message: 'Example text'
-  }
-
-  const response = await client.post('/api/v2/message').loginVia(sender).send(messageData).end()
+  const response = await createTestMessage(client, sender, receiver, 'Example text')
 
   response.assertStatus(200)
   assert.equal(response.body.success_code, '200')
@@ -61,14 +57,16 @@ test('can send message between users', async ({ client, assert }) => {
 
 test('cannot send message to non-existent user', async ({ client, assert }) => {
   const sender = await User.create(testUsers[0])
-  const nonExistentUserId = 99999 // An ID that doesn't exist
+  const nonExistentUserId = 99999
 
-  const messageData = {
-    receiver_user_id: nonExistentUserId,
-    message: 'Example text'
-  }
-
-  const response = await client.post('/api/v2/message').loginVia(sender).send(messageData).end()
+  const response = await client
+    .post('/api/v2/message')
+    .loginVia(sender)
+    .send({
+      receiver_user_id: nonExistentUserId,
+      message: 'Example text'
+    })
+    .end()
 
   response.assertStatus(404)
   assert.equal(response.body.error_code, '404')
@@ -84,33 +82,27 @@ test('can view paginated messages between two users in chronological order', asy
   client,
   assert
 }) => {
-  const userA = await User.create(testUsers[0])
-  const userB = await User.create(testUsers[1])
+  const [userA, userB] = await Promise.all([
+    User.create(testUsers[0]),
+    User.create(testUsers[1])
+  ])
 
   // Create 6 messages to test pagination
-  const messages = Array.from({ length: 6 }, (_, i) => ({
-    message: `Message ${i + 1}`
-  }))
-
+  const messages = Array.from({ length: 6 }, (_, i) => `Message ${i + 1}`)
+  
   // Send messages alternating between users
-  for (let i = 0; i < messages.length; i++) {
-    const sender = i % 2 === 0 ? userA : userB
-    const receiver = i % 2 === 0 ? userB : userA
+  await Promise.all(
+    messages.map((message, i) => 
+      createTestMessage(
+        client,
+        i % 2 === 0 ? userA : userB,
+        i % 2 === 0 ? userB : userA,
+        message
+      )
+    )
+  )
 
-    await client
-      .post('/api/v2/message')
-      .loginVia(sender)
-      .send({
-        receiver_user_id: receiver.id,
-        message: messages[i].message
-      })
-      .end()
-
-    // Small delay to ensure different timestamps
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-
-  // Get first page of conversation (3 messages per page)
+  // Get first page
   const firstPageResponse = await client
     .get('/api/v2/messages')
     .loginVia(userA)
@@ -126,10 +118,10 @@ test('can view paginated messages between two users in chronological order', asy
   assert.equal(firstPageResponse.body.messages[0].message, 'Message 1')
   assert.equal(firstPageResponse.body.messages[2].message, 'Message 3')
 
-  // Verify pagination metadata
+  // Verify first page pagination metadata
+  assert.equal(firstPageResponse.body.pagination.current_page, 1)
   assert.equal(firstPageResponse.body.pagination.total, 6)
   assert.equal(firstPageResponse.body.pagination.per_page, 3)
-  assert.equal(firstPageResponse.body.pagination.current_page, 1)
   assert.equal(firstPageResponse.body.pagination.last_page, 2)
   assert.equal(firstPageResponse.body.pagination.from, 1)
   assert.equal(firstPageResponse.body.pagination.to, 3)
@@ -158,7 +150,7 @@ test('can view paginated messages between two users in chronological order', asy
 
 test('cannot view messages with non-existent user', async ({ client, assert }) => {
   const userA = await User.create(testUsers[0])
-  const nonExistentUserId = 99999 // An ID that doesn't exist
+  const nonExistentUserId = 99999
 
   const response = await client
     .get('/api/v2/messages')

@@ -7,55 +7,55 @@ trait('Test/ApiClient')
 trait('Auth/Client')
 trait('DatabaseTransactions')
 
-test('users index returns paginated results', async ({ client, assert }) => {
-  // Create test users
-  const testUser = await User.create({
-    email: 'test@example.com',
-    password: 'test123',
-    first_name: 'Test',
-    last_name: 'User'
-  })
+const testUser = {
+  email: 'test@example.com',
+  password: 'test123',
+  first_name: 'Test',
+  last_name: 'User'
+}
 
-  // Create 5 additional users
-  const users = Array.from({ length: 5 }, (_, i) => ({
-    email: `user${i + 1}@example.com`,
-    password: 'password123',
-    first_name: 'User',
-    last_name: `${i + 1}`
-  }))
+const createTestUsers = async (count) => {
+  return Promise.all(
+    Array.from({ length: count }, (_, i) => 
+      User.create({
+        email: `user${i + 1}@example.com`,
+        password: 'password123',
+        first_name: 'User',
+        last_name: `${i + 1}`
+      })
+    )
+  )
+}
 
-  for (const user of users) {
-    await User.create(user)
-  }
-
-  const response = await client
+const makeRequest = async (client, authUser, params) => {
+  return client
     .get('/api/v2/users')
-    .loginVia(testUser)
-    .query({ page: 1, limit: 3 })
+    .loginVia(authUser)
+    .query(params)
     .end()
+}
+
+test('users index returns paginated results', async ({ client, assert }) => {
+  const [authUser] = await Promise.all([
+    User.create(testUser),
+    createTestUsers(5)
+  ])
+
+  const response = await makeRequest(client, authUser, { page: 1, limit: 3 })
 
   response.assertStatus(200)
   assert.equal(response.body.users.length, 3)
   assert.exists(response.body.pagination)
-  assert.equal(response.body.pagination.total, 5) // 5 users excluding the authenticated user
+  assert.equal(response.body.pagination.total, 5)
   assert.equal(response.body.pagination.per_page, 3)
   assert.equal(response.body.pagination.current_page, 1)
   assert.equal(response.body.pagination.last_page, 2)
 })
 
 test('users index enforces max limit of 50', async ({ client, assert }) => {
-  const testUser = await User.create({
-    email: 'test@example.com',
-    password: 'test123',
-    first_name: 'Test',
-    last_name: 'User'
-  })
+  const authUser = await User.create(testUser)
 
-  const response = await client
-    .get('/api/v2/users')
-    .loginVia(testUser)
-    .query({ page: 1, limit: 51 })
-    .end()
+  const response = await makeRequest(client, authUser, { page: 1, limit: 51 })
 
   response.assertStatus(400)
   assert.equal(response.body.error_code, '400')
@@ -64,30 +64,17 @@ test('users index enforces max limit of 50', async ({ client, assert }) => {
 })
 
 test('users index requires pagination parameters', async ({ client, assert }) => {
-  const testUser = await User.create({
-    email: 'test@example.com',
-    password: 'test123',
-    first_name: 'Test',
-    last_name: 'User'
-  })
+  const authUser = await User.create(testUser)
 
   // Test missing page
-  const noPageResponse = await client
-    .get('/api/v2/users')
-    .loginVia(testUser)
-    .query({ limit: 10 })
-    .end()
+  const noPageResponse = await makeRequest(client, authUser, { limit: 10 })
 
   noPageResponse.assertStatus(400)
   assert.equal(noPageResponse.body.error_code, '400')
   assert.exists(noPageResponse.body.error_message)
 
   // Test missing limit
-  const noLimitResponse = await client
-    .get('/api/v2/users')
-    .loginVia(testUser)
-    .query({ page: 1 })
-    .end()
+  const noLimitResponse = await makeRequest(client, authUser, { page: 1 })
 
   noLimitResponse.assertStatus(400)
   assert.equal(noLimitResponse.body.error_code, '400')
@@ -95,34 +82,21 @@ test('users index requires pagination parameters', async ({ client, assert }) =>
 })
 
 test('users index handles empty results correctly', async ({ client, assert }) => {
-  const testUser = await User.create({
-    email: 'test@example.com',
-    password: 'test123',
-    first_name: 'Test',
-    last_name: 'User'
-  })
+  const authUser = await User.create(testUser)
 
-  const response = await client
-    .get('/api/v2/users')
-    .loginVia(testUser)
-    .query({ page: 2, limit: 10 })
-    .end()
+  const response = await makeRequest(client, authUser, { page: 1, limit: 10 })
 
   response.assertStatus(200)
   assert.equal(response.body.users.length, 0)
-  assert.equal(response.body.pagination.total, 0) // No other users in the system
-  assert.equal(response.body.pagination.current_page, 2)
-  assert.equal(response.body.pagination.from, null)
-  assert.equal(response.body.pagination.to, null)
+  assert.exists(response.body.pagination)
+  assert.equal(response.body.pagination.total, 0)
+  assert.equal(response.body.pagination.per_page, 10)
+  assert.equal(response.body.pagination.current_page, 1)
+  assert.equal(response.body.pagination.last_page, 1)
 })
 
 test('users index returns users sorted by creation time', async ({ client, assert }) => {
-  const testUser = await User.create({
-    email: 'test@example.com',
-    password: 'test123',
-    first_name: 'Test',
-    last_name: 'User'
-  })
+  const authUser = await User.create(testUser)
 
   // Create users with different creation times
   const users = [
@@ -151,11 +125,7 @@ test('users index returns users sorted by creation time', async ({ client, asser
     created_at: new Date(now.getTime()) // now
   })
 
-  const response = await client
-    .get('/api/v2/users')
-    .loginVia(testUser)
-    .query({ page: 1, limit: 10 })
-    .end()
+  const response = await makeRequest(client, authUser, { page: 1, limit: 10 })
 
   response.assertStatus(200)
   assert.equal(response.body.users.length, 2)

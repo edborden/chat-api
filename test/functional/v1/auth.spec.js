@@ -1,34 +1,22 @@
 'use strict'
 
-const { test, trait, before, after } = use('Test/Suite')('Auth V1')
+const { test, trait } = use('Test/Suite')('Auth V1')
 const User = use('App/Models/User')
-const Database = use('Database')
 
 trait('Test/ApiClient')
 trait('DatabaseTransactions')
 
-before(async () => {
-  // Clear users table before each test suite
-  await Database.table('users').delete()
-})
-
-after(async () => {
-  // Clear users table after each test suite
-  await Database.table('users').delete()
-})
+const testUser = {
+  email: 'test@example.com',
+  password: 'Test123',
+  first_name: 'John',
+  last_name: 'Doe'
+}
 
 test('can register a new user', async ({ client, assert }) => {
-  // Clear any existing users
-  await Database.table('users').delete()
-
   const response = await client
     .post('/api/v1/register')
-    .send({
-      email: 'test@example.com',
-      password: 'Test123',
-      first_name: 'John',
-      last_name: 'Doe'
-    })
+    .send(testUser)
     .end()
 
   response.assertStatus(200)
@@ -38,29 +26,13 @@ test('can register a new user', async ({ client, assert }) => {
 })
 
 test('cannot register with existing email', async ({ client, assert }) => {
-  // Clear any existing users
-  await Database.table('users').delete()
-
   // First registration
-  await client
-    .post('/api/v1/register')
-    .send({
-      email: 'test@example.com',
-      password: 'Test123',
-      first_name: 'John',
-      last_name: 'Doe'
-    })
-    .end()
+  await client.post('/api/v1/register').send(testUser).end()
 
   // Second registration with same email
   const response = await client
     .post('/api/v1/register')
-    .send({
-      email: 'test@example.com',
-      password: 'Test123',
-      first_name: 'John',
-      last_name: 'Doe'
-    })
+    .send(testUser)
     .end()
 
   response.assertStatus(400)
@@ -70,18 +42,13 @@ test('cannot register with existing email', async ({ client, assert }) => {
 })
 
 test('can login with correct credentials', async ({ client, assert }) => {
-  await User.create({
-    email: 'test@example.com',
-    password: 'Test123',
-    first_name: 'John',
-    last_name: 'Doe'
-  })
+  await User.create(testUser)
 
   const response = await client
     .post('/api/v1/login')
     .send({
-      email: 'test@example.com',
-      password: 'Test123'
+      email: testUser.email,
+      password: testUser.password
     })
     .end()
 
@@ -90,17 +57,12 @@ test('can login with correct credentials', async ({ client, assert }) => {
 })
 
 test('cannot login with incorrect credentials', async ({ client, assert }) => {
-  await User.create({
-    email: 'test@example.com',
-    password: 'Test123',
-    first_name: 'John',
-    last_name: 'Doe'
-  })
+  await User.create(testUser)
 
   const response = await client
     .post('/api/v1/login')
     .send({
-      email: 'test@example.com',
+      email: testUser.email,
       password: 'wrongpassword'
     })
     .end()
