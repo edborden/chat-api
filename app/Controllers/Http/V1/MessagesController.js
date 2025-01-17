@@ -2,6 +2,7 @@
 
 const User = use('App/Models/User')
 const Message = use('App/Models/Message')
+const ResponseService = use('App/Services/ResponseService')
 
 class MessagesController {
   async create({ request, response }) {
@@ -13,11 +14,14 @@ class MessagesController {
       .fetch()
 
     if (users.rows.length !== 2) {
-      return response.status(404).json({
-        error_code: '404',
-        error_title: 'User(s) Not Found',
-        error_message: `Could not find user(s): ${[sender_user_id, receiver_user_id].filter(id =>
-          !users.rows.find(user => user.id === id)).join(',')}`
+      const missingUsers = [sender_user_id, receiver_user_id].filter(id =>
+        !users.rows.find(user => user.id === id)
+      ).join(',')
+
+      return ResponseService.error(response, {
+        code: '404',
+        title: 'User(s) Not Found',
+        message: `Could not find user(s): ${missingUsers}`
       })
     }
 
@@ -28,10 +32,9 @@ class MessagesController {
       message
     })
 
-    return response.status(200).json({
-      success_code: '200',
-      success_title: 'Message Sent',
-      success_message: 'Message was sent successfully'
+    return ResponseService.success(response, {
+      title: 'Message Sent',
+      message: 'Message was sent successfully'
     })
   }
 
@@ -44,11 +47,14 @@ class MessagesController {
       .fetch()
 
     if (users.rows.length !== 2) {
-      return response.status(404).json({
-        error_code: '404',
-        error_title: 'User(s) Not Found',
-        error_message: `Could not find user(s): ${[user_id_a, user_id_b].filter(id =>
-          !users.rows.find(user => user.id === id)).join(',')}`
+      const missingUsers = [user_id_a, user_id_b].filter(id =>
+        !users.rows.find(user => user.id === id)
+      ).join(',')
+
+      return ResponseService.error(response, {
+        code: '404',
+        title: 'User(s) Not Found',
+        message: `Could not find user(s): ${missingUsers}`
       })
     }
 

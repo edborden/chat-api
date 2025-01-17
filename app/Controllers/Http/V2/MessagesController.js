@@ -2,6 +2,7 @@
 
 const User = use('App/Models/User')
 const Message = use('App/Models/Message')
+const ResponseService = use('App/Services/ResponseService')
 
 class MessagesController {
   /**
@@ -18,10 +19,10 @@ class MessagesController {
     // Verify receiver exists
     const receiver = await User.find(receiver_user_id)
     if (!receiver) {
-      return response.status(404).json({
-        error_code: '404',
-        error_title: 'User Not Found',
-        error_message: `Could not find user: ${receiver_user_id}`
+      return ResponseService.error(response, {
+        code: '404',
+        title: 'User Not Found',
+        message: `Could not find user: ${receiver_user_id}`
       })
     }
 
@@ -32,10 +33,9 @@ class MessagesController {
       message
     })
 
-    return response.status(200).json({
-      success_code: '200',
-      success_title: 'Message Sent',
-      success_message: 'Message was sent successfully'
+    return ResponseService.success(response, {
+      title: 'Message Sent',
+      message: 'Message was sent successfully'
     })
   }
 
@@ -50,37 +50,17 @@ class MessagesController {
     const { other_user_id, page, limit } = request.get()
     const user = await auth.getUser()
 
-    // Validate required parameters
-    if (!page) {
-      return response.status(400).json({
-        error_code: '400',
-        error_message: 'Page number is required'
-      })
-    }
-
-    if (!limit) {
-      return response.status(400).json({
-        error_code: '400',
-        error_message: 'Limit is required'
-      })
-    }
-
-    // Enforce max limit of 50 messages per page
-    if (limit > 50) {
-      return response.status(400).json({
-        error_code: '400',
-        error_title: 'Invalid Parameters',
-        error_message: 'Limit cannot exceed 50 messages per page'
-      })
-    }
+    // Validate pagination parameters
+    const validationError = ResponseService.validatePagination(response, { page, limit })
+    if (validationError) return validationError
 
     // Verify other user exists
     const otherUser = await User.find(other_user_id)
     if (!otherUser) {
-      return response.status(404).json({
-        error_code: '404',
-        error_title: 'User Not Found',
-        error_message: `Could not find user: ${other_user_id}`
+      return ResponseService.error(response, {
+        code: '404',
+        title: 'User Not Found',
+        message: `Could not find user: ${other_user_id}`
       })
     }
 
@@ -101,22 +81,11 @@ class MessagesController {
     // Transform response to match expected format
     const { data, ...pagination } = messages.toJSON()
 
-    // Handle empty results with proper pagination metadata
-    const total = pagination.total || 0
-    const lastPage = Math.max(Math.ceil(total / limit), 1)
-    const from = total ? (page - 1) * limit + 1 : null
-    const to = total ? Math.min(page * limit, total) : null
-
-    return response.status(200).json({
-      messages: data,
-      pagination: {
-        total,
-        per_page: parseInt(limit),
-        current_page: parseInt(page),
-        last_page: lastPage,
-        from,
-        to
-      }
+    return ResponseService.paginatedResponse(response, {
+      data: { messages: data },
+      page,
+      limit,
+      total: pagination.total || 0
     })
   }
 }

@@ -1,6 +1,7 @@
 'use strict'
 
 const User = use('App/Models/User')
+const ResponseService = use('App/Services/ResponseService')
 
 class UsersController {
   async index({ response }) {
