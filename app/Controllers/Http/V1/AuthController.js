@@ -12,15 +12,15 @@ class AuthController {
       return response.status(400).json({
         error_code: '400',
         error_title: 'Registration Failed',
-        error_message: 'Email already registered'
+        error_message: 'Email already exists'
       })
     }
 
     // Create user
     await User.create(data)
 
-    return response.status(201).json({
-      success_code: '201',
+    return response.status(200).json({
+      success_code: '200',
       success_title: 'Registration Successful',
       success_message: 'User registered successfully'
     })

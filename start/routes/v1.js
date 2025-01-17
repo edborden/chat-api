@@ -7,10 +7,10 @@ Route.group(() => {
   Route.post('/register', 'V1/AuthController.register')
   Route.post('/login', 'V1/AuthController.login')
 
-  // Message routes
-  Route.get('/view_messages', 'V1/MessagesController.view_messages')
-  Route.post('/send_message', 'V1/MessagesController.send_message')
+  // Messages routes
+  Route.post('/messages', 'V1/MessagesController.create')
+  Route.get('/messages', 'V1/MessagesController.index')
 
-  // User routes
-  Route.get('/list_all_users', 'V1/UsersController.list_all_users')
+  // Users routes
+  Route.get('/users', 'V1/UsersController.index')
 }).prefix('api/v1')

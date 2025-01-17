@@ -98,7 +98,26 @@ class MessagesController {
       .orderBy('created_at', 'asc')
       .paginate(page, limit)
 
-    return response.json(messages.toJSON())
+    // Transform response to match expected format
+    const { data, ...pagination } = messages.toJSON()
+
+    // Handle empty results with proper pagination metadata
+    const total = pagination.total || 0
+    const lastPage = Math.max(Math.ceil(total / limit), 1)
+    const from = total ? (page - 1) * limit + 1 : null
+    const to = total ? Math.min(page * limit, total) : null
+
+    return response.status(200).json({
+      messages: data,
+      pagination: {
+        total,
+        per_page: parseInt(limit),
+        current_page: parseInt(page),
+        last_page: lastPage,
+        from,
+        to
+      }
+    })
   }
 }
 

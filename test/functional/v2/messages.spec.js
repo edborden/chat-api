@@ -44,11 +44,7 @@ test('can send message between users', async ({ client, assert }) => {
     message: 'Example text'
   }
 
-  const response = await client
-    .post('/api/v2/message')
-    .loginVia(sender)
-    .send(messageData)
-    .end()
+  const response = await client.post('/api/v2/message').loginVia(sender).send(messageData).end()
 
   response.assertStatus(200)
   assert.equal(response.body.success_code, '200')
@@ -72,11 +68,7 @@ test('cannot send message to non-existent user', async ({ client, assert }) => {
     message: 'Example text'
   }
 
-  const response = await client
-    .post('/api/v2/message')
-    .loginVia(sender)
-    .send(messageData)
-    .end()
+  const response = await client.post('/api/v2/message').loginVia(sender).send(messageData).end()
 
   response.assertStatus(404)
   assert.equal(response.body.error_code, '404')
@@ -88,7 +80,10 @@ test('cannot send message to non-existent user', async ({ client, assert }) => {
   assert.equal(messages.length, 0)
 })
 
-test('can view paginated messages between two users in chronological order', async ({ client, assert }) => {
+test('can view paginated messages between two users in chronological order', async ({
+  client,
+  assert
+}) => {
   const userA = await User.create(testUsers[0])
   const userB = await User.create(testUsers[1])
 

@@ -41,8 +41,7 @@ class UsersController {
     }
 
     // Get paginated users, excluding the authenticated user
-    const users = await User
-      .query()
+    const users = await User.query()
       .where('id', '!=', user.id)
       .orderBy('created_at', 'desc')
       .paginate(page, limit)

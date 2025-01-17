@@ -8,7 +8,9 @@
     "start": "node server.js",
     "test": "node ace test",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,json,md}\""
   },
   "keywords": [
     "adonisjs",
@@ -34,9 +36,12 @@
   "devDependencies": {
     "@adonisjs/vow": "^1.0.17",
     "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.0.1",
     "eslint-config-standard": "^17.1.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-n": "^16.6.2",
-    "eslint-plugin-promise": "^6.6.0"
+    "eslint-plugin-prettier": "^5.2.2",
+    "eslint-plugin-promise": "^6.6.0",
+    "prettier": "^3.4.2"
   }
 }

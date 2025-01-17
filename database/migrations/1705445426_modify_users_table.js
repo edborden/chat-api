@@ -5,7 +5,7 @@ const Schema = use('Schema')
 
 class ModifyUsersTableSchema extends Schema {
   up() {
-    this.table('users', (table) => {
+    this.table('users', table => {
       // Remove username column
       table.dropColumn('username')
 
@@ -16,7 +16,7 @@ class ModifyUsersTableSchema extends Schema {
   }
 
   down() {
-    this.table('users', (table) => {
+    this.table('users', table => {
       // Restore username column
       table.string('username', 80).notNullable().unique()
 

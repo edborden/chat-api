@@ -4,7 +4,6 @@ const { test, trait } = use('Test/Suite')('Messages V1')
 const User = use('App/Models/User')
 
 trait('Test/ApiClient')
-trait('Auth/Client')
 trait('DatabaseTransactions')
 
 test('can send message between users', async ({ client }) => {
@@ -24,8 +23,8 @@ test('can send message between users', async ({ client }) => {
 
   const response = await client
     .post('/api/v1/messages')
-    .loginVia(sender)
     .send({
+      sender_user_id: sender.id,
       receiver_user_id: receiver.id,
       message: 'Hello!'
     })
@@ -44,8 +43,8 @@ test('cannot send message to non-existent user', async ({ client }) => {
 
   const response = await client
     .post('/api/v1/messages')
-    .loginVia(sender)
     .send({
+      sender_user_id: sender.id,
       receiver_user_id: 999,
       message: 'Hello!'
     })
@@ -72,8 +71,8 @@ test('can view messages between two users in chronological order', async ({ clie
   // Send messages from both users
   await client
     .post('/api/v1/messages')
-    .loginVia(userA)
     .send({
+      sender_user_id: userA.id,
       receiver_user_id: userB.id,
       message: 'Message 1'
     })
@@ -81,8 +80,8 @@ test('can view messages between two users in chronological order', async ({ clie
 
   await client
     .post('/api/v1/messages')
-    .loginVia(userB)
     .send({
+      sender_user_id: userB.id,
       receiver_user_id: userA.id,
       message: 'Message 2'
     })
@@ -90,7 +89,6 @@ test('can view messages between two users in chronological order', async ({ clie
 
   const response = await client
     .get('/api/v1/messages')
-    .loginVia(userA)
     .query({
       user_id_a: userA.id,
       user_id_b: userB.id

@@ -165,10 +165,7 @@ test('users index returns users sorted by creation time', async ({ client, asser
 })
 
 test('cannot access users without authentication', async ({ client, assert }) => {
-  const response = await client
-    .get('/api/v2/users')
-    .query({ page: 1, limit: 10 })
-    .end()
+  const response = await client.get('/api/v2/users').query({ page: 1, limit: 10 }).end()
 
   response.assertStatus(401)
 })
