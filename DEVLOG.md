@@ -31,3 +31,6 @@
 - Add any validation needed on inputs (use zod?, probably overkill?), make a decision on adding linting, prettier. ----zod, swagger skipped based on time
 - Look for opportunities for code consolidation between the v1/v2 routing.
 - Clean up readme, add this log as a separate document, and commit a db dump as requested.
+
+## Database Schema
+The database schema can be found in [database/schema.sql](database/schema.sql). This file contains the complete structure of all tables, including indexes and foreign key relationships.
