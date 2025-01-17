@@ -8,9 +8,11 @@ class UsersController {
    * @param {object} ctx - The context object
    * @param {object} ctx.request - The request object
    * @param {object} ctx.response - The response object
+   * @param {object} ctx.auth - The auth object
    */
-  async index({ request, response }) {
-    const { requester_user_id, page, limit } = request.get()
+  async index({ request, response, auth }) {
+    const { page, limit } = request.get()
+    const user = await auth.getUser()
 
     // Validate required parameters
     if (!page) {
@@ -38,19 +40,10 @@ class UsersController {
       })
     }
 
-    // Verify requester exists
-    const requester = await User.find(requester_user_id)
-    if (!requester) {
-      return response.status(404).json({
-        error_code: '404',
-        error_title: 'User(s) Not Found',
-        error_message: `Could not find user(s): ${requester_user_id}`
-      })
-    }
-
-    // Get paginated users, excluding the requester
-    const users = await User.query()
-      .where('id', '!=', requester_user_id)
+    // Get paginated users, excluding the authenticated user
+    const users = await User
+      .query()
+      .where('id', '!=', user.id)
       .orderBy('created_at', 'desc')
       .paginate(page, limit)
 

@@ -62,24 +62,6 @@ class AuthController {
       })
     }
   }
-
-  async profile({ response, auth }) {
-    try {
-      const user = await auth.getUser()
-      const userData = user.toJSON()
-      return response.json({
-        email: userData.email,
-        first_name: userData.first_name,
-        last_name: userData.last_name
-      })
-    } catch (error) {
-      return response.status(401).json({
-        error_code: '401',
-        error_title: 'Authorization Failed',
-        error_message: 'You are not authorized!'
-      })
-    }
-  }
 }
 
 module.exports = AuthController

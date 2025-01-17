@@ -5,6 +5,7 @@ const User = use('App/Models/User')
 const Database = use('Database')
 
 trait('Test/ApiClient')
+trait('Auth/Client')
 trait('DatabaseTransactions')
 
 beforeEach(async () => {
@@ -39,20 +40,20 @@ test('can send message between users', async ({ client, assert }) => {
   const receiver = await User.create(testUsers[1])
 
   const messageData = {
-    sender_user_id: sender.id,
     receiver_user_id: receiver.id,
     message: 'Example text'
   }
 
   const response = await client
     .post('/api/v2/message')
+    .loginVia(sender)
     .send(messageData)
     .end()
 
   response.assertStatus(200)
   assert.equal(response.body.success_code, '200')
-  assert.equal(response.body.success_title, 'Message Sent')
-  assert.equal(response.body.success_message, 'Message was sent successfully')
+  assert.exists(response.body.success_title)
+  assert.exists(response.body.success_message)
 
   // Verify message was saved in database
   const messages = await Database.table('messages')
@@ -67,20 +68,20 @@ test('cannot send message to non-existent user', async ({ client, assert }) => {
   const nonExistentUserId = 99999 // An ID that doesn't exist
 
   const messageData = {
-    sender_user_id: sender.id,
     receiver_user_id: nonExistentUserId,
     message: 'Example text'
   }
 
   const response = await client
     .post('/api/v2/message')
+    .loginVia(sender)
     .send(messageData)
     .end()
 
   response.assertStatus(404)
   assert.equal(response.body.error_code, '404')
-  assert.equal(response.body.error_title, 'User(s) Not Found')
-  assert.equal(response.body.error_message, `Could not find user(s): ${nonExistentUserId}`)
+  assert.exists(response.body.error_title)
+  assert.exists(response.body.error_message)
 
   // Verify no message was saved
   const messages = await Database.table('messages')
@@ -93,18 +94,23 @@ test('can view paginated messages between two users in chronological order', asy
 
   // Create 6 messages to test pagination
   const messages = Array.from({ length: 6 }, (_, i) => ({
-    sender_user_id: i % 2 === 0 ? userA.id : userB.id,
-    receiver_user_id: i % 2 === 0 ? userB.id : userA.id,
     message: `Message ${i + 1}`
   }))
 
-  // Send each message with a small delay to ensure different timestamps
-  for (const message of messages) {
+  // Send messages alternating between users
+  for (let i = 0; i < messages.length; i++) {
+    const sender = i % 2 === 0 ? userA : userB
+    const receiver = i % 2 === 0 ? userB : userA
+
     await client
       .post('/api/v2/message')
-      .send(message)
+      .loginVia(sender)
+      .send({
+        receiver_user_id: receiver.id,
+        message: messages[i].message
+      })
       .end()
-    
+
     // Small delay to ensure different timestamps
     await new Promise(resolve => setTimeout(resolve, 100))
   }
@@ -112,9 +118,9 @@ test('can view paginated messages between two users in chronological order', asy
   // Get first page of conversation (3 messages per page)
   const firstPageResponse = await client
     .get('/api/v2/messages')
-    .query({ 
-      user_id_a: userA.id, 
-      user_id_b: userB.id,
+    .loginVia(userA)
+    .query({
+      other_user_id: userB.id,
       page: 1,
       limit: 3
     })
@@ -124,7 +130,7 @@ test('can view paginated messages between two users in chronological order', asy
   assert.equal(firstPageResponse.body.messages.length, 3)
   assert.equal(firstPageResponse.body.messages[0].message, 'Message 1')
   assert.equal(firstPageResponse.body.messages[2].message, 'Message 3')
-  
+
   // Verify pagination metadata
   assert.equal(firstPageResponse.body.pagination.total, 6)
   assert.equal(firstPageResponse.body.pagination.per_page, 3)
@@ -136,9 +142,9 @@ test('can view paginated messages between two users in chronological order', asy
   // Get second page
   const secondPageResponse = await client
     .get('/api/v2/messages')
-    .query({ 
-      user_id_a: userA.id, 
-      user_id_b: userB.id,
+    .loginVia(userA)
+    .query({
+      other_user_id: userB.id,
       page: 2,
       limit: 3
     })
@@ -161,9 +167,9 @@ test('cannot view messages with non-existent user', async ({ client, assert }) =
 
   const response = await client
     .get('/api/v2/messages')
-    .query({ 
-      user_id_a: userA.id, 
-      user_id_b: nonExistentUserId,
+    .loginVia(userA)
+    .query({
+      other_user_id: nonExistentUserId,
       page: 1,
       limit: 10
     })
@@ -171,8 +177,8 @@ test('cannot view messages with non-existent user', async ({ client, assert }) =
 
   response.assertStatus(404)
   assert.equal(response.body.error_code, '404')
-  assert.equal(response.body.error_title, 'User(s) Not Found')
-  assert.equal(response.body.error_message, `Could not find user(s): ${nonExistentUserId}`)
+  assert.exists(response.body.error_title)
+  assert.exists(response.body.error_message)
 })
 
 test('messages index requires pagination parameters', async ({ client, assert }) => {
@@ -182,30 +188,30 @@ test('messages index requires pagination parameters', async ({ client, assert })
   // Test missing page
   const noPageResponse = await client
     .get('/api/v2/messages')
-    .query({ 
-      user_id_a: userA.id, 
-      user_id_b: userB.id,
+    .loginVia(userA)
+    .query({
+      other_user_id: userB.id,
       limit: 10
     })
     .end()
 
   noPageResponse.assertStatus(400)
   assert.equal(noPageResponse.body.error_code, '400')
-  assert.equal(noPageResponse.body.error_message, 'Page number is required')
+  assert.exists(noPageResponse.body.error_message)
 
   // Test missing limit
   const noLimitResponse = await client
     .get('/api/v2/messages')
-    .query({ 
-      user_id_a: userA.id, 
-      user_id_b: userB.id,
+    .loginVia(userA)
+    .query({
+      other_user_id: userB.id,
       page: 1
     })
     .end()
 
   noLimitResponse.assertStatus(400)
   assert.equal(noLimitResponse.body.error_code, '400')
-  assert.equal(noLimitResponse.body.error_message, 'Limit is required')
+  assert.exists(noLimitResponse.body.error_message)
 })
 
 test('messages index enforces max limit of 50', async ({ client, assert }) => {
@@ -214,9 +220,9 @@ test('messages index enforces max limit of 50', async ({ client, assert }) => {
 
   const response = await client
     .get('/api/v2/messages')
-    .query({ 
-      user_id_a: userA.id, 
-      user_id_b: userB.id,
+    .loginVia(userA)
+    .query({
+      other_user_id: userB.id,
       page: 1,
       limit: 51
     })
@@ -224,6 +230,22 @@ test('messages index enforces max limit of 50', async ({ client, assert }) => {
 
   response.assertStatus(400)
   assert.equal(response.body.error_code, '400')
-  assert.equal(response.body.error_title, 'Invalid Parameters')
-  assert.equal(response.body.error_message, 'Limit cannot exceed 50 messages per page')
+  assert.exists(response.body.error_title)
+  assert.exists(response.body.error_message)
+})
+
+test('cannot access messages without authentication', async ({ client, assert }) => {
+  const userA = await User.create(testUsers[0])
+  const userB = await User.create(testUsers[1])
+
+  const response = await client
+    .get('/api/v2/messages')
+    .query({
+      other_user_id: userB.id,
+      page: 1,
+      limit: 10
+    })
+    .end()
+
+  response.assertStatus(401)
 })

@@ -1,30 +1,34 @@
 'use strict'
 
-const Message = use('App/Models/Message')
 const User = use('App/Models/User')
+const Message = use('App/Models/Message')
+const Database = use('Database')
 
 class MessagesController {
-  async create({ request, response }) {
-    const { sender_user_id, receiver_user_id, message } = request.all()
+  /**
+   * Send a message to another user
+   * @param {object} ctx - The context object
+   * @param {object} ctx.request - The request object
+   * @param {object} ctx.response - The response object
+   * @param {object} ctx.auth - The auth object
+   */
+  async create({ request, response, auth }) {
+    const { receiver_user_id, message } = request.all()
+    const sender = await auth.getUser()
 
-    // Check if users exist
-    const users = await Promise.all([
-      User.find(sender_user_id),
-      User.find(receiver_user_id)
-    ])
-
-    const missingIds = [sender_user_id, receiver_user_id].filter((_, index) => !users[index])
-    if (missingIds.length > 0) {
+    // Verify receiver exists
+    const receiver = await User.find(receiver_user_id)
+    if (!receiver) {
       return response.status(404).json({
         error_code: '404',
-        error_title: 'User(s) Not Found',
-        error_message: `Could not find user(s): ${missingIds.join(', ')}`
+        error_title: 'User Not Found',
+        error_message: `Could not find user: ${receiver_user_id}`
       })
     }
 
     // Create message
     await Message.create({
-      sender_user_id,
+      sender_user_id: sender.id,
       receiver_user_id,
       message
     })
@@ -36,14 +40,21 @@ class MessagesController {
     })
   }
 
-  async index({ request, response }) {
-    const { user_id_a, user_id_b, page, limit } = request.get()
+  /**
+   * Get paginated messages between two users
+   * @param {object} ctx - The context object
+   * @param {object} ctx.request - The request object
+   * @param {object} ctx.response - The response object
+   * @param {object} ctx.auth - The auth object
+   */
+  async index({ request, response, auth }) {
+    const { other_user_id, page, limit } = request.get()
+    const user = await auth.getUser()
 
     // Validate required parameters
     if (!page) {
       return response.status(400).json({
         error_code: '400',
-        error_title: 'Invalid Parameters',
         error_message: 'Page number is required'
       })
     }
@@ -51,7 +62,6 @@ class MessagesController {
     if (!limit) {
       return response.status(400).json({
         error_code: '400',
-        error_title: 'Invalid Parameters',
         error_message: 'Limit is required'
       })
     }
@@ -65,32 +75,25 @@ class MessagesController {
       })
     }
 
-    // Check if users exist
-    const users = await Promise.all([
-      User.find(user_id_a),
-      User.find(user_id_b)
-    ])
-
-    const missingIds = [user_id_a, user_id_b].filter((_, index) => !users[index])
-    if (missingIds.length > 0) {
+    // Verify other user exists
+    const otherUser = await User.find(other_user_id)
+    if (!otherUser) {
       return response.status(404).json({
         error_code: '404',
-        error_title: 'User(s) Not Found',
-        error_message: `Could not find user(s): ${missingIds.join(', ')}`
+        error_title: 'User Not Found',
+        error_message: `Could not find user: ${other_user_id}`
       })
     }
 
-    // Get messages between these users in chronological order with pagination
-    const messages = await Message
-      .query()
+    // Get messages between users
+    const messages = await Message.query()
       .where(function () {
         this.where(function () {
-          this.where('sender_user_id', user_id_a)
-          this.where('receiver_user_id', user_id_b)
-        })
-        .orWhere(function () {
-          this.where('sender_user_id', user_id_b)
-          this.where('receiver_user_id', user_id_a)
+          this.where('sender_user_id', user.id)
+            .where('receiver_user_id', other_user_id)
+        }).orWhere(function () {
+          this.where('sender_user_id', other_user_id)
+            .where('receiver_user_id', user.id)
         })
       })
       .orderBy('created_at', 'asc')
